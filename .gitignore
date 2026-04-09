@@ -1,0 +1,9 @@
+myenv
+.vscode
+.sfdx
+transcriber.log
+__pycache__/
+*.pyc
+*.pyo
+live_video.py
+sentiment_model/
