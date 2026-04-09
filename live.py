@@ -15,9 +15,9 @@ import pyaudiowpatch as pyaudio
 import scipy.io.wavfile as wav_io
 import scipy.signal as signal
 
-# ─────────────────────────────────────────────────────────────
+
 #  LOGGING
-# ─────────────────────────────────────────────────────────────
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -29,10 +29,8 @@ logging.basicConfig(
 )
 log = logging.getLogger("live_transcriber")
 
-# ─────────────────────────────────────────────────────────────
 #  CONFIG
-# ─────────────────────────────────────────────────────────────
-SAMPLE_RATE: int = 16_000          # Whisper native — do NOT change
+SAMPLE_RATE: int = 16_000          
 
 WINDOW_SECONDS: int = 6           # Rolling context window fed to the model
 STEP_SECONDS: int = 3              # Capture + inference cadence
@@ -42,11 +40,8 @@ MIC_AUDIO_FILE: str    = "recorded_mic1.wav"
 SPEAKER_AUDIO_FILE: str = "recorded_speaker1.wav"
 
 # ── Silence gates ─────────────────────────────────────────────
-# YOU  stream: RMS must exceed this to trigger transcription
 SILENCE_THRESHOLD: float = 0.006
-# CLIENT stream multiplier.
-# FIX: was 2.5 — too aggressive, dropped soft-spoken Hindi callers.
-# 1.5 keeps the gate meaningful while passing normal call-centre audio.
+
 CLIENT_SILENCE_MUL: float = 1.5
 
 # ── Pipeline chunk config (Hinglish model) ───────────────────
@@ -55,18 +50,14 @@ PIPE_STRIDE_LENGTH_S: int = 2
 
 HINGLISH_MODEL_ID: str = "Oriserve/Whisper-Hindi2Hinglish-Swift"
 
-# Initial prompt injected into the Whisper decoder.
-# This single line shifts the model's prior strongly toward
-# Hinglish output instead of pure Devanagari Hindi or pure English.
+
 HINGLISH_INITIAL_PROMPT: str = (
     "Yeh ek Hinglish conversation hai. "
     "Roman script mein transcribe karo. "
     "Hindi aur English mix hogi."
 )
 
-# ─────────────────────────────────────────────────────────────
 #  GLOBALS
-# ─────────────────────────────────────────────────────────────
 
 processor = None
 
@@ -80,7 +71,6 @@ indic_pipe                  = None   # HuggingFace pipeline (Hinglish)
 _last_speaker: str = ""
 _pending_lines: Dict[str, str] = {"YOU": "", "CLIENT": ""}
 
-# ── Lock-free audio buffers (deque.extend is GIL-atomic in CPython) ──
 mic_buffer_ts: deque     = deque()
 speaker_buffer_ts: deque = deque()
 mic_full: deque          = deque()
@@ -89,7 +79,7 @@ speaker_full: deque      = deque()
 mic_window: Optional[Deque]     = None
 speaker_window: Optional[Deque] = None
 
-# ── Latest-snapshot slots (one per stream) ───────────────────
+
 _snap_lock = threading.Lock()
 _mic_snap: Dict     = {"data": None, "rate": 0, "ready": False}
 _speaker_snap: Dict = {"data": None, "rate": 0, "ready": False}
@@ -102,9 +92,8 @@ _recent_text: Dict[str, _deque] = {
 }
 
 
-# ─────────────────────────────────────────────────────────────
 #  LANGUAGE SELECTION
-# ─────────────────────────────────────────────────────────────
+
 def select_language() -> Tuple[str, str, bool]:
     """Prompt the user to choose a transcription language/mode."""
     print("\n  LANGUAGE / TRANSCRIPT MODE")
@@ -122,9 +111,8 @@ def select_language() -> Tuple[str, str, bool]:
             print("  Invalid input — numbers only.")
 
 
-# ─────────────────────────────────────────────────────────────
 #  MODEL LOADING
-# ─────────────────────────────────────────────────────────────
+
 def load_models(use_indic: bool) -> None:
     """Load the appropriate ASR model based on language selection."""
     global fw_model, indic_pipe
@@ -155,8 +143,6 @@ def load_models(use_indic: bool) -> None:
 
         processor = AutoProcessor.from_pretrained(HINGLISH_MODEL_ID)
 
-        # Pipeline with chunked long-form inference and stride overlap so that
-        # words at chunk boundaries are not lost.
         indic_pipe = pipeline(
             "automatic-speech-recognition",
             model=hf_model,
@@ -177,9 +163,8 @@ def load_models(use_indic: bool) -> None:
         log.info("faster-whisper ready ✓")
 
 
-# ─────────────────────────────────────────────────────────────
 #  DEVICE SELECTION
-# ─────────────────────────────────────────────────────────────
+
 def select_microphone(p: pyaudio.PyAudio) -> Tuple[int, int]:
     """List input devices and let the user pick a microphone."""
     print("\n  AVAILABLE MICROPHONES")
@@ -243,9 +228,8 @@ def select_speaker(p: pyaudio.PyAudio) -> Tuple[Optional[int], Optional[int]]:
             print("  Invalid input.")
 
 
-# ─────────────────────────────────────────────────────────────
+
 #  AUDIO CALLBACKS  — lock-free (GIL-atomic deque ops)
-# ─────────────────────────────────────────────────────────────
 def mic_callback(in_data, frame_count, time_info, status) -> tuple:
     audio = np.frombuffer(in_data, dtype=np.float32)
     mic_buffer_ts.extend(audio.tolist())
@@ -255,10 +239,7 @@ def mic_callback(in_data, frame_count, time_info, status) -> tuple:
 
 def speaker_callback(in_data, frame_count, time_info, status) -> tuple:
     audio = np.frombuffer(in_data, dtype=np.float32)
-    # Speaker loopback arrives as 2-channel interleaved [L, R, L, R, ...].
-    # Average to mono here so downstream code always sees 1-D audio at the
-    # correct sample count.  Skipping this step would cause audio to be
-    # treated as mono at 2× the actual sample rate (double-speed playback).
+
     if audio.size % 2 == 0:
         audio = audio.reshape(-1, 2).mean(axis=1)
     speaker_buffer_ts.extend(audio.tolist())
@@ -266,9 +247,8 @@ def speaker_callback(in_data, frame_count, time_info, status) -> tuple:
     return (None, pyaudio.paContinue)
 
 
-# ─────────────────────────────────────────────────────────────
 #  DRAIN HELPER
-# ─────────────────────────────────────────────────────────────
+
 def _drain(buf: deque) -> list:
     """Atomically drain all items from a deque into a list."""
     out: list = []
@@ -280,9 +260,8 @@ def _drain(buf: deque) -> list:
     return out
 
 
-# ─────────────────────────────────────────────────────────────
+
 #  AUDIO HELPERS
-# ─────────────────────────────────────────────────────────────
 def _resample(a: np.ndarray, src: int, dst: int = SAMPLE_RATE) -> np.ndarray:
     """Polyphase resample using FIR filter (O(n), avoids FFT edge ringing)."""
     if src == dst:
@@ -294,16 +273,13 @@ def _resample(a: np.ndarray, src: int, dst: int = SAMPLE_RATE) -> np.ndarray:
 def _prepare(audio_data: list, source_rate: int) -> np.ndarray:
     """Convert raw callback samples → normalised mono float32 at SAMPLE_RATE."""
     a = np.array(audio_data, dtype=np.float32)
-    if a.ndim == 2:          # defensive: should already be 1-D
+    if a.ndim == 2:          
         a = a.mean(axis=1)
     return _resample(a, source_rate, SAMPLE_RATE)
 
 
-# ─────────────────────────────────────────────────────────────
 #  HALLUCINATION FILTER
-# ─────────────────────────────────────────────────────────────
-# Common outputs the models produce when there is no real speech or when
-# the model is guessing.  Keep this list lean — over-filtering hurts recall.
+
 _KNOWN_HALLUCINATIONS: frozenset = frozenset({
     "thanks for watching", "thank you for watching", "subscribe",
     "please subscribe", "subtitles by", "dhanyavaad", "shukriya",
@@ -330,8 +306,6 @@ def _is_hallucination(text: str) -> bool:
     """
     t = text.strip()
 
-    # Absolute minimum length — catches stray punctuation / single chars
-    # FIX: was 5; lowered to 3 so "ok", "ha", "no" pass through.
     if len(t) < 3:
         return True
 
@@ -344,17 +318,13 @@ def _is_hallucination(text: str) -> bool:
     if len(tokens) >= 2 and len({tok.lower() for tok in tokens}) == 1:
         return True
 
-    # Short phrase with ≤2 unique words — only block in Hinglish mode
-    # because English frequently produces valid 2-unique-word phrases.
     if use_indic_model and len(tokens) <= 5 and len({tok.lower() for tok in tokens}) <= 2:
         return True
 
     if len(tokens) >= 6:
-        # Any single token dominating >35% of the utterance → repetition loop
         most_common_count = Counter(tok.lower() for tok in tokens).most_common(1)[0][1]
         if most_common_count / len(tokens) > 0.35:
             return True
-        # Trailing trigram repeated ≥2 times elsewhere in the utterance
         tail = tokens[-3:]
         repeats = sum(
             1 for i in range(len(tokens) - 3) if tokens[i : i + 3] == tail
@@ -365,12 +335,8 @@ def _is_hallucination(text: str) -> bool:
     return False
 
 
-# ─────────────────────────────────────────────────────────────
 #  DEDUPLICATION
-# ─────────────────────────────────────────────────────────────
-# Require at least 3 words of overlap before stripping the prefix.
-# This prevents the deduplicator eating the start of new sentences that
-# coincidentally share a common word with the previous output.
+
 MIN_DEDUP_OVERLAP: int = 3
 
 def _deduplicate(new_text: str, last_text: str) -> str:
@@ -391,7 +357,7 @@ def _deduplicate(new_text: str, last_text: str) -> str:
         last_tail = " ".join(last_words[-n:])
         new_head  = " ".join(new_words[:n])
         ratio = SequenceMatcher(None, last_tail.lower(), new_head.lower()).ratio()
-        if ratio >= 0.75:   # 75% similarity counts as overlap
+        if ratio >= 0.75:   
             best = n
             break
 
@@ -401,11 +367,8 @@ def _deduplicate(new_text: str, last_text: str) -> str:
     deduplicated = " ".join(new_words[best:]).strip()
     return deduplicated if deduplicated else new_text
 
-# ─────────────────────────────────────────────────────────────
 #  LOW-CONFIDENCE FILTER
-# ─────────────────────────────────────────────────────────────
-# Common Hinglish fillers.  These are legitimate in isolation but suspicious
-# when they make up the majority of a short utterance (model guessing).
+
 _HINGLISH_FILLERS: frozenset = frozenset({
     "haan", "ji", "aur", "yah", "vah", "hai", "toh",
     "achchha", "nahin", "ek", "ki", "ka", "ke", "ko",
@@ -434,8 +397,6 @@ def _is_low_confidence(text: str) -> bool:
         return True
 
     if use_indic_model:
-        # FIX: threshold raised from 0.70 → 0.85 to stop valid fillers being
-        # discarded when they constitute a high proportion of short utterances.
         filler_count = sum(
             1 for t in tokens if t.lower().rstrip(".,") in _HINGLISH_FILLERS
         )
@@ -458,9 +419,7 @@ def _is_low_confidence(text: str) -> bool:
     return False
 
 
-# ─────────────────────────────────────────────────────────────
 #  EMIT / PRINT HELPERS
-# ─────────────────────────────────────────────────────────────
 def _emit(label: str, msg: str) -> None:
     """Buffer a debug/status line; flush previous speaker's pending line on speaker change."""
     global _last_speaker
@@ -474,9 +433,7 @@ def _emit(label: str, msg: str) -> None:
     _pending_lines[label] = f"[{label}] {msg}"
 
 
-# ─────────────────────────────────────────────────────────────
 #  TRANSCRIPTION  — core function
-# ─────────────────────────────────────────────────────────────
 def transcribe_audio(audio_data: list, source_label: str, source_rate: int) -> None:
     """
     Run ASR on one audio snapshot and write the result to the transcript.
@@ -560,11 +517,7 @@ def transcribe_audio(audio_data: list, source_label: str, source_rate: int) -> N
                     speech_pad_ms=600,
                     threshold=0.2,
                 ),
-                # Previous-text conditioning causes error compounding in live
-                # sliding-window mode — disable for live use.
                 condition_on_previous_text=False,
-                # 0.35 is correct: 0.85 (old) kept segments even when Whisper
-                # was 85% confident there was NO speech.
                 no_speech_threshold=0.25,
                 repetition_penalty=1.3,
                 compression_ratio_threshold=2.4,
@@ -627,9 +580,7 @@ def transcribe_audio(audio_data: list, source_label: str, source_rate: int) -> N
         fh.write(line + "\n")
 
 
-# ─────────────────────────────────────────────────────────────
 #  SNAPSHOT HELPERS
-# ─────────────────────────────────────────────────────────────
 def _put_snapshot(snap: dict, audio: list, rate: int, label: str) -> None:
     """Write a new audio snapshot; log if previous snapshot was not consumed."""
     if not audio:
@@ -658,9 +609,8 @@ def _get_snapshot(snap: dict) -> Tuple[Optional[list], int]:
     return audio, rate
 
 
-# ─────────────────────────────────────────────────────────────
 #  WORKER FACTORY
-# ─────────────────────────────────────────────────────────────
+
 def _make_worker(
     snap: dict,
     stop_event: threading.Event,
@@ -697,9 +647,8 @@ def _make_worker(
     return t
 
 
-# ─────────────────────────────────────────────────────────────
 #  SAVE FULL AUDIO
-# ─────────────────────────────────────────────────────────────
+
 def save_full_audio() -> None:
     """
     Write the complete session audio to WAV files at SAMPLE_RATE (16 kHz).
@@ -720,9 +669,8 @@ def save_full_audio() -> None:
         log.info(f"Speaker -> {SPEAKER_AUDIO_FILE}  ({len(a)/SAMPLE_RATE:.1f}s @ {SAMPLE_RATE} Hz)")
 
 
-# ─────────────────────────────────────────────────────────────
 #  MAIN
-# ─────────────────────────────────────────────────────────────
+
 def main() -> None:
     global mic_rate_global, speaker_rate_global
     global selected_language_code, selected_language_name, use_indic_model
