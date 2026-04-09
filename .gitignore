@@ -1,9 +1,25 @@
-myenv
-.vscode
-.sfdx
-transcriber.log
+# Virtual environment
+myenv/
+
+# Editor / IDE
+.vscode/
+
+# Salesforce
+.sfdx/
+
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
+
+# App files
 live_video.py
 sentiment_model/
+
+# Logs & transcripts
+transcriber.log
+transcript.txt
+transcript1.txt
+
+# Audio files
+*.wav
