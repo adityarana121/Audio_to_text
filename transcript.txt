@@ -1,0 +1,14 @@
+=== Started : 2026-04-09 12:10:20 ===
+=== Language: Hinglish ===
+
+[12:10:29] [CLIENT] [Hinglish] Jab tak mera transformer khatm nahin bolta,
+[12:10:35] [CLIENT] [Hinglish] it's basically like an auto complete. Agar aap
+[12:10:43] [CLIENT] [Hinglish] Socho agar aap isko bahut optimally run karo that is what your GPT is doing. To jab aap GPT ke andar kuchh bhi
+[12:10:50] [CLIENT] [Hinglish] Andar next word ko credit karta hai and poore process ko kab tak repeat karta hai jab tak, jab tak.
+[12:10:58] [CLIENT] [Hinglish] Usse ek end nahin mil jaata. That is basically your transformer. Yah baat samajh aai. Ok.
+[12:11:06] [CLIENT] [Hinglish] You have input sequence, you get the next word prediction, usko aap vaapas upend kar to and you repeat this process.
+[12:11:15] [CLIENT] [Hinglish] Bahut badhiya. Abhi transformer ko dekhate hain na ki transformer work kaise karta hai. Thik hai? Yah poora jo architecture hai kaise work
+[12:11:22] [CLIENT] [Hinglish] Letter se agar hamne usko bola hey there, ok. Computer's ko na yah English,
+[12:11:30] [CLIENT] [Hinglish] Nahin samajhaati. Right? Yah jo words hain jo abhi aapke saamne letters hain jo English ke letters hain, yah ham
+[12:11:38] [CLIENT] [Hinglish] Computers ko samajh mein nahin aate computers ke lie more efficient hota hai maths, ok number.
+[12:11:44] [CLIENT] [Hinglish] Ki format mein pasand karte hain. So first step jo

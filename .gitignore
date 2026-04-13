@@ -16,10 +16,10 @@ __pycache__/
 live_video.py
 sentiment_model/
 
-# Logs & transcripts
+# Logs
 transcriber.log
-transcript.txt
-transcript1.txt
 
 # Audio files
 *.wav
+
+sentiment_model_v2

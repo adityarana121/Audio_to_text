@@ -1,0 +1,36 @@
+SENTIMENT ANALYSIS REPORT
+Transcript  : transcript.txt
+Language    : hinglish
+Analyzed at : 2026-04-13 17:51:38
+=========================================================================================================
+  Row   Time         Speaker    Sentiment            Conf%    Text
+=========================================================================================================
+  1     [12:10:29]  [CLIENT ]  😠 Negative           60.2     Jab tak mera transformer khatm nahin bolta,
+  2     [12:10:35]  [CLIENT ]  😠 Negative           71.1     it's basically like an auto complete. Agar aap
+  3     [12:10:43]  [CLIENT ]  😊 Positive           57.7     Socho agar aap isko bahut optimally run karo that ...
+  4     [12:10:50]  [CLIENT ]  😐 Neutral            74.3     Andar next word ko credit karta hai and poore proc...
+  5     [12:10:58]  [CLIENT ]  😐 Neutral            44.3     Usse ek end nahin mil jaata. That is basically you...
+  6     [12:11:06]  [CLIENT ]  😐 Neutral            67.8     You have input sequence, you get the next word pre...
+  7     [12:11:15]  [CLIENT ]  😠 Negative           70.5     Bahut badhiya. Abhi transformer ko dekhate hain na...
+  8     [12:11:22]  [CLIENT ]  😠 Negative           52.9     Letter se agar hamne usko bola hey there, ok. Comp...
+  9     [12:11:30]  [CLIENT ]  😠 Negative           73.8     Nahin samajhaati. Right? Yah jo words hain jo abhi...
+  10    [12:11:38]  [CLIENT ]  😊 Positive           57.5     Computers ko samajh mein nahin aate computers ke l...
+  11    [12:11:44]  [CLIENT ]  😊 Positive           54.8     Ki format mein pasand karte hain. So first step jo
+
+============================================================
+Average Confidence per Sentiment
+============================================================
+  😠 Negative                avg confidence: 65.7%
+  😊 Positive                avg confidence: 56.7%
+  😐 Neutral                 avg confidence: 62.1%
+
+============================================================
+Sentiment Distribution
+============================================================
+  😊 Positive                  3 row(s)  27%
+  😐 Neutral                   3 row(s)  27%
+  😠 Negative                  5 row(s)  45%
+
+  Dominant sentiment  : 😠 Negative
+  Total rows analyzed : 11
+  Transcript language : hinglish

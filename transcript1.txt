@@ -1,0 +1,16 @@
+=== Started : 2026-04-09 12:28:05 ===
+=== Language: English ===
+
+[12:28:13] [CLIENT] [English] Everybody's talking about artificial intelligence.
+[12:28:17] [CLIENT] [English] these days. AI, machine learning...
+[12:28:22] [CLIENT] [English] is another hot topic are they the same thing?
+[12:28:28] [CLIENT] [English] or are they different? And if so, what are those differences and deep learning is another one that
+[12:28:38] [CLIENT] [English] Artificial Intelligence, Machine Learning and Deep Learning And talked about where they fit
+[12:28:45] [CLIENT] [English] There are a lot of comments on that, and I read those Comments. And i'd like to arrest some Of the most frequently asked questions So we can
+[12:28:50] [CLIENT] [English] clear up some of the myths and misconceptions around this.
+[12:28:55] [CLIENT] [English] was recorded. And that is the absolute explosion of this area of generative
+[12:29:05] [CLIENT] [English] models, and chatbots have seemed to be taking over the world.
+[12:29:10] [CLIENT] [English] really interesting technology and then also things like deep fakes.
+[12:29:15] [CLIENT] [English] are all within the realm of AI, but how do they fit?
+[12:29:22] [CLIENT] [English] within each other? How are they related to Each Other. We're going take a look at That in this video and try To explain
+[12:29:27] [CLIENT] [English] all these technologies relate and how we can use them.
