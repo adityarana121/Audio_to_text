@@ -13,7 +13,6 @@ __pycache__/
 *.pyo
 
 # App files
-live_video.py
 sentiment_model/
 
 # Logs

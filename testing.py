@@ -30,7 +30,7 @@ MIC_AUDIO_FILE: str    = "recorded_mic.wav"
 SPEAKER_AUDIO_FILE: str = "recorded_speaker.wav"
 
 # ── Silence gates ─────────────────────────────────────────────
-SILENCE_THRESHOLD: float = 0.006
+SILENCE_THRESHOLD: float = 0.002
 
 CLIENT_SILENCE_MUL: float = 1.5
 
@@ -357,7 +357,6 @@ def _deduplicate(new_text: str, last_text: str) -> str:
     deduplicated = " ".join(new_words[best:]).strip()
     return deduplicated if deduplicated else new_text
 
-#  LOW-CONFIDENCE FILTER
 def _drain_with_tail(buf: deque, tail_samples: int) -> list:     #change
     """Drain all but the last tail_samples items from a deque."""
     out = []
@@ -368,6 +367,8 @@ def _drain_with_tail(buf: deque, tail_samples: int) -> list:     #change
         except IndexError:
             break
     return out
+
+#  LOW-CONFIDENCE FILTER
 
 _HINGLISH_FILLERS: frozenset = frozenset({
     "haan", "ji", "aur", "yah", "vah", "hai", "toh",
@@ -435,15 +436,6 @@ def _emit(label: str, msg: str) -> None:
 
 #  TRANSCRIPTION  — core function
 def transcribe_audio(audio_data: list, source_label: str, source_rate: int) -> None:
-    """
-    Run ASR on one audio snapshot and write the result to the transcript.
-
-    Parameters
-    ──────────
-    audio_data   : raw float32 samples at source_rate
-    source_label : "YOU" (microphone) or "CLIENT" (speaker loopback)
-    source_rate  : original capture sample rate (before resampling)
-    """
     if not audio_data:
         _emit(source_label, "no audio data — skipping")
         return
@@ -463,7 +455,6 @@ def transcribe_audio(audio_data: list, source_label: str, source_rate: int) -> N
 
     _emit(source_label, f"transcribing…  rms={rms:.4f}  samples={len(audio_np):,}")
 
-    # Peak-normalise so soft speech reaches the model at a consistent level
     if raw_max > 0:
         audio_np = audio_np / raw_max
 
@@ -472,23 +463,20 @@ def transcribe_audio(audio_data: list, source_label: str, source_rate: int) -> N
     # ── HINGLISH path ────────────────────────────────────────
     if use_indic_model and indic_pipe is not None:
         try:
-            prompt = HINGLISH_INITIAL_PROMPT
             import torch
-
             prompt_ids = torch.tensor(
                 processor.tokenizer(HINGLISH_INITIAL_PROMPT).input_ids,
                 dtype=torch.long
             )
-            result = indic_pipe(
-                audio_np.copy(),
-            )
+            result = indic_pipe(audio_np.copy())
             raw_text = result.get("text", "").strip()
-            log.debug(f"[{source_label}] RAW: {raw_text[:80]!r}")
+
+            # ── DEBUG: see exactly what model returns and which filter kills it ──
+            log.info(f"[{source_label}] RAW TEXT: {raw_text!r}")
+            log.info(f"[{source_label}] low_conf={_is_low_confidence(raw_text)}  halluc={_is_hallucination(raw_text)}")
 
             if _is_low_confidence(raw_text):
-                log.debug(
-                    f"[{source_label}] low-confidence — rejecting: {raw_text[:60]!r}"
-                )
+                log.info(f"[{source_label}] low-confidence — rejecting: {raw_text[:60]!r}")
                 return
 
             chunk_text = raw_text
@@ -530,11 +518,7 @@ def transcribe_audio(audio_data: list, source_label: str, source_rate: int) -> N
                     _emit(source_label, f"segment kept: {seg.text.strip()[:60]!r}")
                     parts.append(seg.text.strip())
                 else:
-                    _emit(
-                        source_label,
-                        f"segment dropped (no_speech={seg.no_speech_prob:.2f}): "
-                        f"{seg.text.strip()[:50]!r}",
-                    )
+                    _emit(source_label, f"segment dropped (no_speech={seg.no_speech_prob:.2f}): {seg.text.strip()[:50]!r}")
 
             chunk_text = " ".join(parts)
 
@@ -563,9 +547,8 @@ def transcribe_audio(audio_data: list, source_label: str, source_rate: int) -> N
         _emit(source_label, "deduplicated text is hallucination — skipping")
         return
 
-    _recent_text[source_label].append(chunk_text)  # store pre-dedup for next overlap check
+    _recent_text[source_label].append(chunk_text)
 
-    # Flush any pending status line before printing the transcript line
     pending = _pending_lines.get(source_label, "")
     if pending:
         print(pending, flush=True)
@@ -646,6 +629,11 @@ def _make_worker(
     t.start()
     return t
 
+def _is_speech_active(buf_tail: list, rate: int, window_ms: int = 700) -> bool:
+    n = int(rate * window_ms / 1000)
+    tail = buf_tail[-n:] if len(buf_tail) >= n else buf_tail
+    rms = float(np.sqrt(np.mean(np.array(tail, dtype=np.float32) ** 2)))
+    return rms >= 0.002   # ← hardcoded low value, independent of SILENCE_THRESHOLD
 
 #  SAVE FULL AUDIO
 
@@ -753,19 +741,42 @@ def main() -> None:
         while True:
             time.sleep(STEP_SECONDS)
 
-            TAIL_SAMPLES = int(mic_rate_global * 0.5)  # 0.5s tail carry
-            mic_chunk = _drain_with_tail(mic_buffer_ts, TAIL_SAMPLES)
-            spk_chunk = _drain_with_tail(speaker_buffer_ts, int(speaker_rate_global * 0.5))
+            mic_chunk = _drain(mic_buffer_ts)
+            spk_chunk = _drain(speaker_buffer_ts)
 
             mic_window.extend(mic_chunk)
             if spk_chunk:
                 speaker_window.extend(spk_chunk)
 
+            # --- VAD-aware snapshot for mic ---
+            mic_tail = list(mic_window)
+            if _is_speech_active(mic_tail, mic_rate_global):
+                for _ in range(10):   # max 600ms extra wait (6 × 100ms)
+                    time.sleep(0.1)
+                    extra = _drain(mic_buffer_ts)
+                    if extra:
+                        mic_window.extend(extra)
+                        mic_full.extend(extra)
+                    if not _is_speech_active(list(mic_window), mic_rate_global):
+                        break
+
+            log.info(f"[YOU] firing snapshot — samples={len(list(mic_window))}")
             _put_snapshot(_mic_snap, list(mic_window), mic_rate_global, "YOU")
+
+            # --- VAD-aware snapshot for speaker ---
             if spk_chunk:
-                _put_snapshot(
-                    _speaker_snap, list(speaker_window), speaker_rate_global, "CLIENT"
-                )
+                spk_tail = list(speaker_window)
+                if _is_speech_active(spk_tail, speaker_rate_global):
+                    for _ in range(6):
+                        time.sleep(0.1)
+                        extra = _drain(speaker_buffer_ts)
+                        if extra:
+                            speaker_window.extend(extra)
+                            speaker_full.extend(extra)
+                        if not _is_speech_active(list(speaker_window), speaker_rate_global):
+                            break
+
+                _put_snapshot(_speaker_snap, list(speaker_window), speaker_rate_global, "CLIENT")
 
     except KeyboardInterrupt:
         log.info("KeyboardInterrupt — stopping …")

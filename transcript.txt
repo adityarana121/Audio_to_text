@@ -1,14 +1,16 @@
-=== Started : 2026-04-09 12:10:20 ===
-=== Language: Hinglish ===
+=== Started : 2026-04-23 16:19:55 ===
+=== Language: English ===
 
-[12:10:29] [CLIENT] [Hinglish] Jab tak mera transformer khatm nahin bolta,
-[12:10:35] [CLIENT] [Hinglish] it's basically like an auto complete. Agar aap
-[12:10:43] [CLIENT] [Hinglish] Socho agar aap isko bahut optimally run karo that is what your GPT is doing. To jab aap GPT ke andar kuchh bhi
-[12:10:50] [CLIENT] [Hinglish] Andar next word ko credit karta hai and poore process ko kab tak repeat karta hai jab tak, jab tak.
-[12:10:58] [CLIENT] [Hinglish] Usse ek end nahin mil jaata. That is basically your transformer. Yah baat samajh aai. Ok.
-[12:11:06] [CLIENT] [Hinglish] You have input sequence, you get the next word prediction, usko aap vaapas upend kar to and you repeat this process.
-[12:11:15] [CLIENT] [Hinglish] Bahut badhiya. Abhi transformer ko dekhate hain na ki transformer work kaise karta hai. Thik hai? Yah poora jo architecture hai kaise work
-[12:11:22] [CLIENT] [Hinglish] Letter se agar hamne usko bola hey there, ok. Computer's ko na yah English,
-[12:11:30] [CLIENT] [Hinglish] Nahin samajhaati. Right? Yah jo words hain jo abhi aapke saamne letters hain jo English ke letters hain, yah ham
-[12:11:38] [CLIENT] [Hinglish] Computers ko samajh mein nahin aate computers ke lie more efficient hota hai maths, ok number.
-[12:11:44] [CLIENT] [Hinglish] Ki format mein pasand karte hain. So first step jo
+[16:20:17] [CLIENT] [English] The only trade-off is that, possibility
+[16:20:24] [CLIENT] [English] massive database, and the space savings are significant.
+[16:20:31] [CLIENT] [English] 1.2 GB of memory, that's a fraction Of what it would take to store full keys in a cache
+[16:20:37] [CLIENT] [English] large-scale systems like Cassandra for example, use bloom filters to avoid unnecessary disc lookups.
+[16:20:43] [CLIENT] [English] And in some cases, companies keep a global bloom filter of all taken usernames
+[16:20:49] [CLIENT] [English] The most lookups can be filtered front, saving both time and compute.
+[16:20:54] [CLIENT] [English] In short, Bloom filters act as a first line of events.
+[16:20:59] [CLIENT] [English] reducing load on caches and there is downstream.
+[16:21:05] [CLIENT] [English] technique in systems that deal with billions of rates and need fast, cost-effective membership
+[16:21:11] [CLIENT] [English] comparison table of the data structures we have discussed. Redis HashMap, Crye B plus
+[16:21:17] [CLIENT] [English] fees and Bloomfield. Highlighting their performance memory usage
+[16:21:23] [CLIENT] [English] name lookups. So far, we have explored the individual building blocks from HashMap to
+[16:21:31] [CLIENT] [English] recent bloopers, each with their own strengths and trade-offs.
